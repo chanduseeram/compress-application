@@ -1,0 +1,6 @@
+boto3==1.43.63
+botocore==1.43.63
+fastapi==0.141.1
+pillow==12.1.1
+python-multipart==0.0.32
+uvicorn==0.52.1

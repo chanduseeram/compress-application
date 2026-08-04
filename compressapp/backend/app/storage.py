@@ -1,0 +1,44 @@
+import os
+import boto3
+from botocore.config import Config
+
+R2_ACCOUNT_ID = os.environ.get("R2_ACCOUNT_ID")
+R2_ACCESS_KEY_ID = os.environ.get("R2_ACCESS_KEY_ID")
+R2_SECRET_ACCESS_KEY = os.environ.get("R2_SECRET_ACCESS_KEY")
+R2_BUCKET = os.environ.get("R2_BUCKET", "compressapp")
+
+_client = None
+
+
+def get_client():
+    global _client
+    if _client is None:
+        if not (R2_ACCOUNT_ID and R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY):
+            raise RuntimeError(
+                "R2 credentials missing. Set R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET."
+            )
+        _client = boto3.client(
+            "s3",
+            endpoint_url=f"https://{R2_ACCOUNT_ID}.r2.cloudflarestorage.com",
+            aws_access_key_id=R2_ACCESS_KEY_ID,
+            aws_secret_access_key=R2_SECRET_ACCESS_KEY,
+            config=Config(signature_version="s3v4"),
+            region_name="auto",
+        )
+    return _client
+
+
+def upload_file(local_path: str, key: str) -> None:
+    get_client().upload_file(local_path, R2_BUCKET, key)
+
+
+def presigned_download_url(key: str, expires_in: int = 3600) -> str:
+    return get_client().generate_presigned_url(
+        "get_object",
+        Params={"Bucket": R2_BUCKET, "Key": key},
+        ExpiresIn=expires_in,
+    )
+
+
+def delete_file(key: str) -> None:
+    get_client().delete_object(Bucket=R2_BUCKET, Key=key)
