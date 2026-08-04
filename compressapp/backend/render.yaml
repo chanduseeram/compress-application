@@ -5,11 +5,13 @@ services:
     plan: free
     dockerfilePath: ./Dockerfile
     envVars:
-      - key: R2_ACCOUNT_ID
+      - key: S3_ENDPOINT_URL
         sync: false
-      - key: R2_ACCESS_KEY_ID
+      - key: S3_ACCESS_KEY_ID
         sync: false
-      - key: R2_SECRET_ACCESS_KEY
+      - key: S3_SECRET_ACCESS_KEY
         sync: false
-      - key: R2_BUCKET
+      - key: S3_BUCKET
+        sync: false
+      - key: S3_REGION
         sync: false
