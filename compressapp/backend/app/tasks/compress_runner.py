@@ -64,7 +64,13 @@ def process_batch(job_id: str, file_specs: list[dict], output_dir: str):
                 out = compress_image(path, output_dir, mode)
                 n_images += 1
             elif is_video(path):
-                out = compress_video(path, output_dir, mode)
+                def _report(fraction: float, _i=i, _total=total, _name=name):
+                    # Sub-file progress: current file index + how far through
+                    # it we are, so the bar animates smoothly instead of
+                    # sitting at the file boundary until the whole file lands.
+                    job_store.update_progress(job_id, _i + fraction, _name)
+
+                out = compress_video(path, output_dir, mode, on_progress=_report)
                 n_videos += 1
             else:
                 out = path

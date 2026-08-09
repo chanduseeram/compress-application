@@ -12,11 +12,18 @@ CHUNK_THRESHOLD_SECONDS = 30
 CHUNK_LENGTH_SECONDS = 15
 
 # Cap resolution during encode — a single chunk at 4K/1440p/1080p can spike
-# RAM past 512MB regardless of duration. Measured on this exact server:
-# faster @1080p ~590MB, superfast @1080p ~500MB (both over budget);
-# superfast @720p ~296MB (safe margin). True 1080p reliably needs a paid
-# Render tier with more RAM — this is a real ceiling, not a code choice.
-MAX_HEIGHT = 720
+# RAM past 512MB regardless of duration. Measured on this exact server
+# (full pipeline, Python overhead included):
+#   lossy   @720p ~296MB  (safe)
+#   lossless@720p ~369MB  (safe)   lossless@800p ~433MB  (safe, more margin than 900p+)
+#   lossless@900p ~503MB  (too close to the wall)   lossless@1080p ~640MB  (crashes)
+# Lossless uses more memory per pixel than lossy at the same resolution
+# (measured: lossless@1080p ~640MB vs lossy@1080p ~500-590MB), but 800p
+# still leaves safe margin for lossless, so it gets a slightly higher cap
+# than lossy's 720p — each mode's cap picked from real measurements, not
+# a shared guess.
+LOSSY_MAX_HEIGHT = 720
+LOSSLESS_MAX_HEIGHT = 800
 
 
 def is_video(path: str) -> bool:
@@ -36,20 +43,20 @@ def get_duration(path: str) -> float:
 
 def _encode_args(mode: str) -> list[str]:
     """Shared low-memory encode settings for both chunked and direct paths."""
-    # Downscale only if the source exceeds MAX_HEIGHT — never upscale.
-    scale_filter = f"scale=-2:'min({MAX_HEIGHT},ih)'"
     if mode == "lossless":
         # True full-resolution lossless measured at ~640MB peak for 1080p —
         # over the 512MB ceiling, which is exactly why this was crashing.
-        # Capping to MAX_HEIGHT keeps lossless mode alive on free tier;
-        # it's pixel-identical AT that resolution, not full original res
-        # if the source is larger. True full-res lossless needs a paid
-        # tier with more RAM — a real ceiling, not a code bug.
+        # Capping to LOSSLESS_MAX_HEIGHT keeps it alive on free tier; it's
+        # pixel-identical AT that resolution, not full original res if the
+        # source is larger. True full-res lossless needs a paid tier with
+        # more RAM — a real ceiling, not a code bug.
+        scale_filter = f"scale=-2:'min({LOSSLESS_MAX_HEIGHT},ih)'"
         return [
             "-vf", scale_filter,
             "-c:v", "libx265", "-x265-params", "lossless=1", "-threads", "1",
             "-c:a", "copy",
         ]
+    scale_filter = f"scale=-2:'min({LOSSY_MAX_HEIGHT},ih)'"
     return [
         "-vf", scale_filter,
         "-c:v", "libx265", "-crf", "19", "-preset", "superfast", "-threads", "1",
@@ -62,12 +69,17 @@ def _encode_single(src: str, out_path: str, mode: str) -> None:
     subprocess.run(cmd, check=True, capture_output=True)
 
 
-def compress_video(src_path: str, dest_dir: str, mode: str) -> str:
+def compress_video(src_path: str, dest_dir: str, mode: str, on_progress=None) -> str:
     """
     mode: 'lossless' or 'lossy'
     Long videos are split into short chunks, encoded one at a time (low peak
     RAM), then concatenated back into a single output file. Each chunk's
     files are deleted as soon as it's no longer needed.
+
+    on_progress(fraction: float), if given, is called after each chunk
+    finishes with a 0.0-1.0 value — lets the caller show smooth progress
+    within a single large file instead of the bar sitting still until the
+    whole file is done.
     """
     src = Path(src_path)
     ext = ".mkv" if mode == "lossless" else ".mp4"
@@ -78,6 +90,8 @@ def compress_video(src_path: str, dest_dir: str, mode: str) -> str:
 
     if duration <= CHUNK_THRESHOLD_SECONDS:
         _encode_single(str(src), str(out_path), mode)
+        if on_progress:
+            on_progress(1.0)
         return str(out_path)
 
     # --- chunked path ---
@@ -98,6 +112,7 @@ def compress_video(src_path: str, dest_dir: str, mode: str) -> str:
             raise RuntimeError("Video splitting produced no segments")
 
         compressed_chunk_paths = []
+        total_chunks = len(raw_chunks)
 
         for i, raw_chunk in enumerate(raw_chunks):
             compressed_chunk = work_dir / f"done_{i:04d}{ext}"
@@ -110,6 +125,10 @@ def compress_video(src_path: str, dest_dir: str, mode: str) -> str:
             gc.collect()
 
             compressed_chunk_paths.append(compressed_chunk)
+
+            if on_progress:
+                # Reserve the last slice of the bar for the concat step below
+                on_progress(0.9 * (i + 1) / total_chunks)
 
         if not compressed_chunk_paths:
             raise RuntimeError("Video chunking produced no valid segments")
@@ -130,6 +149,9 @@ def compress_video(src_path: str, dest_dir: str, mode: str) -> str:
         # Free the compressed chunks now that they're merged
         for p in compressed_chunk_paths:
             p.unlink(missing_ok=True)
+
+        if on_progress:
+            on_progress(1.0)
 
         return str(out_path)
 

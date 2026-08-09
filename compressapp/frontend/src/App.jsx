@@ -3,8 +3,8 @@ import React, { useState, useCallback, useRef, useMemo } from "react";
 const API = import.meta.env.VITE_API_URL || "";
 
 // Rough, honest estimates — actual ratio varies a lot by content.
-const LOSSY_RATIO = 0.3;
-const LOSSLESS_RATIO = 0.75;
+const LOSSY_RATIO = 0.4;
+const LOSSLESS_RATIO = 0.85;
 
 function humanSize(bytes) {
   if (bytes < 1024) return bytes + " B";
@@ -172,9 +172,9 @@ export default function App() {
     <div className="app">
       <header className="header">
         <div className="wordmark">
-          <span className="wordmark-main">shrink</span>
+          <span className="wordmark-main">File</span>
           <span className="wordmark-dot">.</span>
-          <span className="wordmark-tail">zip</span>
+          <span className="wordmark-tail">Shrinko</span>
         </div>
         <p className="tagline">Upload images and video. Choose lossless or lossy per file. Download one archive.</p>
       </header>
@@ -276,12 +276,12 @@ export default function App() {
             <div className="explainer-col">
               <h3>Lossy</h3>
               <p>Smaller files, tiny quality tradeoff. Best for sharing, uploading, saving space.</p>
-              <p className="explainer-example">500 MB → ~100 MB</p>
+              <p className="explainer-example">500 MB → ~200 MB</p>
             </div>
             <div className="explainer-col">
               <h3>Lossless</h3>
               <p>Pixel-identical to the original. Larger files. Best for editing and archiving.</p>
-              <p className="explainer-example">500 MB → ~300–400 MB</p>
+              <p className="explainer-example">500 MB → ~300–425 MB</p>
             </div>
           </div>
 
@@ -312,7 +312,7 @@ export default function App() {
       {phase === "processing" && (
         <div className="status-panel">
           <p className="status-text">
-            Compressing {progress ? `${progress.current + 1} / ${progress.total}` : ""}
+            Compressing {progress ? `${Math.min(Math.floor(progress.current) + 1, progress.total)} / ${progress.total}` : ""}
             {progress?.file ? ` — ${progress.file}` : ""}
           </p>
           <div className="progress-bar-track">
