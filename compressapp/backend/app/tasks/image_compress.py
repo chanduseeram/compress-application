@@ -21,9 +21,9 @@ def compress_image(src_path: str, dest_dir: str, mode: str) -> str:
     out_path = Path(dest_dir) / out_name
 
     if mode == "lossless":
-        img.save(out_path, format="WEBP", lossless=True, quality=100, method=6)
+        img.save(out_path, format="WEBP", lossless=True, quality=100, method=3)
     else:
-        img.save(out_path, format="WEBP", lossless=False, quality=75, method=6)
+        img.save(out_path, format="WEBP", lossless=False, quality=75, method=3)
 
     return str(out_path)
 
