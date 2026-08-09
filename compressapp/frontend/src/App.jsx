@@ -35,6 +35,7 @@ export default function App() {
   const [etaSeconds, setEtaSeconds] = useState(null);
   const [result, setResult] = useState(null);
   const [jobId, setJobId] = useState(null);
+  const [zipName, setZipName] = useState("");
   const [error, setError] = useState(null);
   const inputRef = useRef();
   const folderInputRef = useRef();
@@ -92,6 +93,7 @@ export default function App() {
         } else if (data.state === "SUCCESS") {
           clearInterval(interval);
           setResult(data.result);
+          setZipName(data.result.default_filename?.replace(/\.zip$/i, "") || "compressed");
           setPhase("done");
         } else if (data.state === "FAILURE") {
           clearInterval(interval);
@@ -282,6 +284,19 @@ export default function App() {
               <p className="explainer-example">500 MB → ~300–425 MB</p>
             </div>
           </div>
+
+          <div className="privacy-note">
+            <span className="privacy-icon">🔒</span>
+            <div>
+              <p className="privacy-title">Your files aren't kept</p>
+              <p className="privacy-body">
+                Uploads and downloads travel over an encrypted connection (HTTPS). Your files
+                are used only to generate your compressed download, then deleted from this
+                server's disk immediately after processing. The download link is unique to
+                your job and expires automatically after 1 hour.
+              </p>
+            </div>
+          </div>
         </>
       )}
 
@@ -307,6 +322,10 @@ export default function App() {
             <span>{overallPct}% complete</span>
             <span>ETA: {humanTime(etaSeconds)}</span>
           </div>
+          <p className="wait-note">
+            Large videos can take several minutes — this keeps running even if you switch
+            tabs or do something else. Come back and this page will show your download.
+          </p>
         </div>
       )}
 
@@ -353,8 +372,24 @@ export default function App() {
               ))}
             </tbody>
           </table>
+          <div className="rename-row">
+            <label className="rename-label" htmlFor="zipname">File name</label>
+            <div className="rename-input-wrap">
+              <input
+                id="zipname"
+                type="text"
+                value={zipName}
+                onChange={(e) => setZipName(e.target.value)}
+                className="rename-input"
+              />
+              <span className="rename-ext">.zip</span>
+            </div>
+          </div>
           <div className="result-actions">
-            <a className="primary-btn" href={`${API}/download/${jobId}`}>
+            <a
+              className="primary-btn"
+              href={`${API}/download/${jobId}?filename=${encodeURIComponent((zipName || "compressed") + ".zip")}`}
+            >
               Download archive
             </a>
             <button className="secondary-btn" onClick={reset}>

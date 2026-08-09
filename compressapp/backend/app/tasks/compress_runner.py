@@ -1,5 +1,6 @@
 import gc
 import zipfile
+from datetime import date
 from pathlib import Path
 
 from app import job_store, storage
@@ -10,6 +11,25 @@ from app.tasks.video_compress import compress_video, is_video
 # the real ceiling is disk space, not memory. Render free tier disk is small;
 # this guards against filling it rather than a RAM concern.
 MAX_VIDEO_MB = 500
+
+
+def _pluralize(count: int, word: str) -> str:
+    return f"{count} {word}{'s' if count != 1 else ''}"
+
+
+def _default_zip_name(n_images: int, n_videos: int) -> str:
+    """
+    Builds a readable name like "5 images and 2 videos - 09 August 2026.zip"
+    instead of a random job-id filename.
+    """
+    parts = []
+    if n_images:
+        parts.append(_pluralize(n_images, "image"))
+    if n_videos:
+        parts.append(_pluralize(n_videos, "video"))
+    label = " and ".join(parts) if parts else "compressed files"
+    today = date.today().strftime("%d %B %Y")
+    return f"{label} - {today}.zip"
 
 
 def process_batch(job_id: str, file_specs: list[dict], output_dir: str):
@@ -23,6 +43,8 @@ def process_batch(job_id: str, file_specs: list[dict], output_dir: str):
     compressed_paths = []
     summary = []
     failures = []
+    n_images = 0
+    n_videos = 0
 
     for i, spec in enumerate(file_specs):
         job_store.update_progress(job_id, i, spec["original_name"])
@@ -40,8 +62,10 @@ def process_batch(job_id: str, file_specs: list[dict], output_dir: str):
 
             if is_image(path):
                 out = compress_image(path, output_dir, mode)
+                n_images += 1
             elif is_video(path):
                 out = compress_video(path, output_dir, mode)
+                n_videos += 1
             else:
                 out = path
 
@@ -78,13 +102,23 @@ def process_batch(job_id: str, file_specs: list[dict], output_dir: str):
             for p in compressed_paths:
                 zf.write(p, arcname=Path(p).name)
 
+        # Individual compressed files are now inside the zip — delete the
+        # loose copies so nothing sits on disk longer than necessary.
+        for p in compressed_paths:
+            Path(p).unlink(missing_ok=True)
+
         r2_key = f"jobs/{job_id}.zip"
         storage.upload_file(str(zip_path), r2_key)
+
+        # Delete the local copy now that it's safely in B2 — nothing of
+        # yours should linger on this server's disk after this point.
+        zip_path.unlink(missing_ok=True)
 
         job_store.mark_success(job_id, {
             "r2_key": r2_key,
             "summary": summary,
             "failures": failures,  # partial failures, batch still succeeded
+            "default_filename": _default_zip_name(n_images, n_videos),
         })
 
     except Exception as e:

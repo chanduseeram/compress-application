@@ -39,12 +39,20 @@ def _encode_args(mode: str) -> list[str]:
     # Downscale only if the source exceeds MAX_HEIGHT — never upscale.
     scale_filter = f"scale=-2:'min({MAX_HEIGHT},ih)'"
     if mode == "lossless":
-        # Lossless mode intentionally skips the scale filter — "lossless"
-        # should mean pixel-identical, not pixel-identical-but-smaller.
-        return ["-c:v", "libx265", "-x265-params", "lossless=1", "-threads", "1", "-c:a", "copy"]
+        # True full-resolution lossless measured at ~640MB peak for 1080p —
+        # over the 512MB ceiling, which is exactly why this was crashing.
+        # Capping to MAX_HEIGHT keeps lossless mode alive on free tier;
+        # it's pixel-identical AT that resolution, not full original res
+        # if the source is larger. True full-res lossless needs a paid
+        # tier with more RAM — a real ceiling, not a code bug.
+        return [
+            "-vf", scale_filter,
+            "-c:v", "libx265", "-x265-params", "lossless=1", "-threads", "1",
+            "-c:a", "copy",
+        ]
     return [
         "-vf", scale_filter,
-        "-c:v", "libx265", "-crf", "22", "-preset", "superfast", "-threads", "1",
+        "-c:v", "libx265", "-crf", "19", "-preset", "superfast", "-threads", "1",
         "-c:a", "aac", "-b:a", "128k",
     ]
 

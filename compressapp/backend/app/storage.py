@@ -36,10 +36,15 @@ def upload_file(local_path: str, key: str) -> None:
     get_client().upload_file(local_path, S3_BUCKET, key)
 
 
-def presigned_download_url(key: str, expires_in: int = 3600) -> str:
+def presigned_download_url(key: str, expires_in: int = 3600, filename: str | None = None) -> str:
+    params = {"Bucket": S3_BUCKET, "Key": key}
+    if filename:
+        # Tells the browser what to name the downloaded file, without
+        # renaming the actual object in storage.
+        params["ResponseContentDisposition"] = f'attachment; filename="{filename}"'
     return get_client().generate_presigned_url(
         "get_object",
-        Params={"Bucket": S3_BUCKET, "Key": key},
+        Params=params,
         ExpiresIn=expires_in,
     )
 

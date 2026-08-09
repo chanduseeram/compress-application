@@ -453,3 +453,83 @@ body {
   padding-left: 18px;
   color: var(--text-dim);
 }
+
+.rename-row {
+  margin-top: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.rename-label {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+}
+
+.rename-input-wrap {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--ink-soft);
+  padding: 0 12px;
+}
+
+.rename-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--paper);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 14px;
+  padding: 10px 0;
+}
+
+.rename-ext {
+  color: var(--text-dim);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 14px;
+}
+
+.wait-note {
+  margin-top: 20px;
+  font-size: 13px;
+  color: var(--text-dim);
+  line-height: 1.5;
+  max-width: 46ch;
+}
+
+.privacy-note {
+  display: flex;
+  gap: 14px;
+  margin-top: 24px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--ink-soft);
+}
+
+.privacy-icon {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.privacy-title {
+  margin: 0 0 4px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--accent);
+}
+
+.privacy-body {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-dim);
+  line-height: 1.5;
+}
