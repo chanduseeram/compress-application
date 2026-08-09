@@ -3,8 +3,8 @@ import React, { useState, useCallback, useRef, useMemo } from "react";
 const API = import.meta.env.VITE_API_URL || "";
 
 // Rough, honest estimates — actual ratio varies a lot by content.
-const LOSSY_RATIO = 0.4;
-const LOSSLESS_RATIO = 0.85;
+const LOSSY_RATIO = 0.3;
+const LOSSLESS_RATIO = 0.75;
 
 function humanSize(bytes) {
   if (bytes < 1024) return bytes + " B";
@@ -276,12 +276,12 @@ export default function App() {
             <div className="explainer-col">
               <h3>Lossy</h3>
               <p>Smaller files, tiny quality tradeoff. Best for sharing, uploading, saving space.</p>
-              <p className="explainer-example">500 MB → ~200 MB</p>
+              <p className="explainer-example">500 MB → ~100 MB</p>
             </div>
             <div className="explainer-col">
               <h3>Lossless</h3>
               <p>Pixel-identical to the original. Larger files. Best for editing and archiving.</p>
-              <p className="explainer-example">500 MB → ~300–425 MB</p>
+              <p className="explainer-example">500 MB → ~300–400 MB</p>
             </div>
           </div>
 
