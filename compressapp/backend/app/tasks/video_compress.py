@@ -8,8 +8,16 @@ from pathlib import Path
 VIDEO_EXTS = {".mp4", ".mov", ".mkv", ".avi", ".webm"}
 
 # Below this duration, chunking adds overhead for no benefit — just encode directly.
-CHUNK_THRESHOLD_SECONDS = 90
-CHUNK_LENGTH_SECONDS = 60
+CHUNK_THRESHOLD_SECONDS = 30
+CHUNK_LENGTH_SECONDS = 15
+
+# Cap resolution during encode — a single chunk at 4K/1440p/1080p can spike
+# RAM past 512MB regardless of duration. Measured on this exact server:
+# preset=faster @ 1080p peaked at ~590MB (over budget); preset=ultrafast @
+# 720p peaked at ~260MB (safe margin under Python/uvicorn's own baseline).
+# This does reduce visual resolution for large source video — a real
+# tradeoff, chosen deliberately to stay inside the free-tier RAM ceiling.
+MAX_HEIGHT = 720
 
 
 def is_video(path: str) -> bool:
@@ -29,10 +37,15 @@ def get_duration(path: str) -> float:
 
 def _encode_args(mode: str) -> list[str]:
     """Shared low-memory encode settings for both chunked and direct paths."""
+    # Downscale only if the source exceeds MAX_HEIGHT — never upscale.
+    scale_filter = f"scale=-2:'min({MAX_HEIGHT},ih)'"
     if mode == "lossless":
-        return ["-c:v", "libx265", "-x265-params", "lossless=1", "-c:a", "copy"]
+        # Lossless mode intentionally skips the scale filter — "lossless"
+        # should mean pixel-identical, not pixel-identical-but-smaller.
+        return ["-c:v", "libx265", "-x265-params", "lossless=1", "-threads", "1", "-c:a", "copy"]
     return [
-        "-c:v", "libx265", "-crf", "28", "-preset", "faster", "-threads", "2",
+        "-vf", scale_filter,
+        "-c:v", "libx265", "-crf", "28", "-preset", "ultrafast", "-threads", "1",
         "-c:a", "aac", "-b:a", "128k",
     ]
 

@@ -67,3 +67,30 @@ async def download(job_id: str):
 @app.get("/health")
 async def health():
     return {"status": "ok"}
+
+
+@app.get("/debug/ffmpeg")
+async def debug_ffmpeg():
+    """
+    Visit this URL directly in a browser to confirm ffmpeg is actually
+    installed on the running server — no shell access needed.
+    """
+    import subprocess
+    try:
+        result = subprocess.run(
+            ["ffmpeg", "-version"], capture_output=True, text=True, timeout=10
+        )
+        return {
+            "ffmpeg_installed": True,
+            "version_output": result.stdout.splitlines()[0] if result.stdout else "",
+        }
+    except FileNotFoundError:
+        return JSONResponse(
+            {"ffmpeg_installed": False, "error": "ffmpeg not found on PATH"},
+            status_code=500,
+        )
+    except Exception as e:
+        return JSONResponse(
+            {"ffmpeg_installed": False, "error": str(e)},
+            status_code=500,
+        )
