@@ -13,10 +13,9 @@ CHUNK_LENGTH_SECONDS = 15
 
 # Cap resolution during encode — a single chunk at 4K/1440p/1080p can spike
 # RAM past 512MB regardless of duration. Measured on this exact server:
-# preset=faster @ 1080p peaked at ~590MB (over budget); preset=ultrafast @
-# 720p peaked at ~260MB (safe margin under Python/uvicorn's own baseline).
-# This does reduce visual resolution for large source video — a real
-# tradeoff, chosen deliberately to stay inside the free-tier RAM ceiling.
+# faster @1080p ~590MB, superfast @1080p ~500MB (both over budget);
+# superfast @720p ~296MB (safe margin). True 1080p reliably needs a paid
+# Render tier with more RAM — this is a real ceiling, not a code choice.
 MAX_HEIGHT = 720
 
 
@@ -45,7 +44,7 @@ def _encode_args(mode: str) -> list[str]:
         return ["-c:v", "libx265", "-x265-params", "lossless=1", "-threads", "1", "-c:a", "copy"]
     return [
         "-vf", scale_filter,
-        "-c:v", "libx265", "-crf", "28", "-preset", "ultrafast", "-threads", "1",
+        "-c:v", "libx265", "-crf", "22", "-preset", "superfast", "-threads", "1",
         "-c:a", "aac", "-b:a", "128k",
     ]
 
